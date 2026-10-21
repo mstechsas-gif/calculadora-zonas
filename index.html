@@ -283,6 +283,13 @@
   .pw-err{color:#ff8a8a;font-size:12.5px;min-height:16px;margin-top:6px}
   .pw-actions{display:flex;gap:10px;margin-top:14px}
   .pw-actions .btn{flex:1;justify-content:center}
+  .qr-card .qr-code{margin-top:4px;font-family:'Courier New',monospace;font-size:12px;color:#5a6478;letter-spacing:.03em}
+  .cam-start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,8,14,.72);text-align:center;padding:20px}
+  .cam-start p{color:#c7d0e0;font-size:13px;max-width:250px;margin:0}
+  .cam-start.hide{display:none}
+  .gen-tools{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .gen-tools .btn,.gen-tools label.btn{cursor:pointer}
+  .leer-result{text-align:center;margin-top:12px;font-size:14px;color:var(--tx-mut);min-height:18px}
 
 
   /* ---------- method cards (heart-rate / pace) ---------- */
@@ -432,8 +439,8 @@
     <h2 class="title" id="regT">Regístrate una vez</h2>
     <p class="lead">Ingresa tus datos la primera vez. Quedan guardados en tu teléfono; las próximas veces solo escaneas.</p>
     <div class="form">
-      <div class="field full"><label for="regNombres">Nombres</label><input type="text" id="regNombres" placeholder="Omar Carmelo" autocomplete="given-name"></div>
-      <div class="field full"><label for="regApellidos">Apellidos</label><input type="text" id="regApellidos" placeholder="Díaz Hernández" autocomplete="family-name"></div>
+      <div class="field full"><label for="regNombres">Nombres</label><input type="text" id="regNombres" placeholder="" autocomplete="given-name"></div>
+      <div class="field full"><label for="regApellidos">Apellidos</label><input type="text" id="regApellidos" placeholder="" autocomplete="family-name"></div>
       <div class="field full"><label for="regCorreo">Correo</label><input type="email" id="regCorreo" placeholder="correo@ejemplo.com" autocomplete="email" inputmode="email"><div class="hint" id="regHint"></div></div>
       <div class="actions">
         <button class="btn btn-ghost" id="regBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Inicio</button>
@@ -450,12 +457,16 @@
     <div class="scanner">
       <video id="scanVideo" playsinline muted></video>
       <div class="scan-frame"></div>
+      <div class="cam-start" id="camStart">
+        <button class="btn btn-primary" id="camStartBtn">Encender cámara</button>
+        <p>Cuando el navegador lo pida, toca <b>Permitir</b> para acceder a la cámara.</p>
+      </div>
     </div>
-    <div class="scan-status" id="scanStatus">Apunta la cámara al código QR…</div>
+    <div class="scan-status" id="scanStatus">Toca «Encender cámara» para escanear.</div>
     <div class="scan-manual" id="scanManualWrap" style="display:none">
-      <label for="scanManualInput">¿La cámara no funciona? Escribe el código tal cual aparece bajo el QR:</label>
+      <label for="scanManualInput">¿La cámara no funciona? Escribe la fecha que aparece bajo el QR:</label>
       <div style="display:flex;gap:8px">
-        <input type="text" id="scanManualInput" placeholder="MRT-ASISTENCIA-2026-10-21">
+        <input type="text" id="scanManualInput" placeholder="2026-10-21" inputmode="numeric">
         <button class="btn btn-primary" id="scanManualGo">Enviar</button>
       </div>
     </div>
@@ -482,6 +493,12 @@
     </div>
     <div id="genUnico" class="qr-area"></div>
     <div id="genSemana" class="qr-grid"></div>
+    <div class="gen-tools">
+      <button class="btn btn-ghost" id="descargarQR">Descargar QR (PNG)</button>
+      <label class="btn btn-ghost" for="leerImg">Leer QR desde imagen</label>
+      <input type="file" id="leerImg" accept="image/*" style="display:none">
+    </div>
+    <div class="leer-result" id="leerResult"></div>
     <div class="actions" style="margin-top:20px">
       <button class="btn btn-ghost" id="adminBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Inicio</button>
     </div>
@@ -13380,6 +13397,7 @@ var qrcode = function() {
   var QR_PREFIX  = "MRT-ASISTENCIA-";
   var WIN_INI = 18*60+15;                     // 6:15 p.m.
   var WIN_FIN = 19*60+45;                     // 7:45 p.m.
+  var pendiente=null;
 
   function dosDig(n){ return (n<10?"0":"")+n; }
   function fechaStrDe(d){ return d.getFullYear()+"-"+dosDig(d.getMonth()+1)+"-"+dosDig(d.getDate()); }
@@ -13411,7 +13429,7 @@ var qrcode = function() {
   regBtn.addEventListener("click", function(){
     if(!validarReg()) return;
     setPerfil({nombres:regN.value.trim(), apellidos:regA.value.trim(), correo:regC.value.trim().toLowerCase()});
-    irEscaner();
+    if(pendiente){ var f=pendiente; pendiente=null; procesarFecha(f); } else { irEscaner(); }
   });
   $("#regBack").addEventListener("click", function(){ goHome(); });
 
@@ -13426,15 +13444,24 @@ var qrcode = function() {
     var p=getPerfil();
     scanName.textContent = p ? (p.nombres+" "+p.apellidos) : "";
     show("screenScan"); setDots(0,0);
-    startScanner();
+    prepararEscaner();
+  }
+  function prepararEscaner(){
+    scanResult.style.display="none";
+    $("#scanManualWrap").style.display="none";
+    var cs=document.getElementById("camStart"); if(cs) cs.classList.remove("hide");
+    scanStatus.style.display="block";
+    scanStatus.className="scan-status";
+    scanStatus.textContent="Toca «Encender cámara» para escanear.";
   }
   function startScanner(){
+    var cs=document.getElementById("camStart"); if(cs) cs.classList.add("hide");
     scanResult.style.display="none";
     $("#scanManualWrap").style.display="none";
     scanStatus.style.display="block";
     scanStatus.textContent="Apunta la cámara al código QR…";
     scanStatus.className="scan-status";
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camError("Este navegador no permite usar la cámara."); return; }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camError("no disponible"); return; }
     navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}, audio:false})
       .then(function(stream){
         scanStream=stream; scanVideo.srcObject=stream;
@@ -13442,9 +13469,14 @@ var qrcode = function() {
         var pr=scanVideo.play(); if(pr&&pr.catch){ pr.catch(function(){}); }
         scanActivo=true; scanRAF=requestAnimationFrame(tick);
       })
-      .catch(function(err){ camError("No se pudo acceder a la cámara. Revisa el permiso de cámara del navegador y vuelve a intentar. ("+((err&&err.name)||"")+")"); });
+      .catch(function(err){ camError((err&&err.name)||""); });
   }
-  function camError(msg){ scanStatus.style.display="block"; scanStatus.textContent=msg; scanStatus.className="scan-status err"; $("#scanManualWrap").style.display="block"; }
+  function camError(detalle){
+    var cs=document.getElementById("camStart"); if(cs) cs.classList.remove("hide");
+    scanStatus.style.display="block"; scanStatus.className="scan-status err";
+    scanStatus.innerHTML="No se pudo abrir la cámara"+(detalle?(" ("+detalle+")"):"")+". Toca <b>Permitir</b> cuando el navegador lo pida, o escanea el QR con la <b>cámara normal</b> de tu celular. Si abriste el enlace dentro de WhatsApp/Instagram, ábrelo en Chrome o Safari.";
+    $("#scanManualWrap").style.display="block";
+  }
   function tick(){
     if(!scanActivo) return;
     if(scanVideo.readyState===scanVideo.HAVE_ENOUGH_DATA){
@@ -13467,13 +13499,18 @@ var qrcode = function() {
     if(scanStream){ scanStream.getTracks().forEach(function(t){ t.stop(); }); scanStream=null; }
     if(scanVideo) scanVideo.srcObject=null;
   }
-  function procesarQR(texto){
-    stopScanner();
+  function extraerFecha(texto){
     texto=(texto||"").trim();
-    if(texto.indexOf(QR_PREFIX)!==0){ mostrarResultado(false,"QR no válido","Este código no corresponde a la asistencia del grupo."); return; }
-    var fecha=texto.slice(QR_PREFIX.length);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ mostrarResultado(false,"QR no válido","El código no tiene una fecha válida."); return; }
+    var m=texto.match(/[?&]a=(\d{4}-\d{2}-\d{2})/);
+    if(m) return m[1];
+    if(texto.indexOf(QR_PREFIX)===0){ var f=texto.slice(QR_PREFIX.length); if(/^\d{4}-\d{2}-\d{2}$/.test(f)) return f; }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+    return null;
+  }
+  function procesarFecha(fecha){
     var p=getPerfil();
+    if(!p||!p.correo){ pendiente=fecha; body.classList.remove("cover"); body.setAttribute("data-mode","asist"); show("screenReg"); setDots(0,0); return; }
+    scanName.textContent=p.nombres+" "+p.apellidos;
     var min=minutosAhora(), ok=false, estado, detalle;
     if(fecha!==hoyStr()){ estado="QR de otro día"; detalle="Este QR es del "+fecha+", no de hoy."; }
     else if(min<WIN_INI || min>WIN_FIN){ estado="Fuera de horario"; detalle="La asistencia se registra entre 6:15 y 7:45 p.m."; }
@@ -13481,15 +13518,26 @@ var qrcode = function() {
     enviarAsistencia({nombres:p.nombres, apellidos:p.apellidos, correo:p.correo, fechaQR:fecha});
     mostrarResultado(ok, estado, detalle);
   }
+  function procesarQR(texto){
+    stopScanner();
+    var fecha=extraerFecha(texto);
+    if(!fecha){ mostrarResultado(false,"QR no válido","Este código no corresponde a la asistencia del grupo."); return; }
+    procesarFecha(fecha);
+  }
   function enviarAsistencia(payload){
     try{ fetch(ASIST_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}); }catch(e){}
   }
   function mostrarResultado(ok, titulo, detalle){
+    body.classList.remove("cover"); body.setAttribute("data-mode","asist");
+    var sc=document.getElementById("screenScan");
+    if(sc && sc.className.indexOf("active")<0){ show("screenScan"); setDots(0,0); }
+    var cs=document.getElementById("camStart"); if(cs) cs.classList.add("hide");
     scanStatus.style.display="none"; $("#scanManualWrap").style.display="none";
     scanResult.style.display="block"; scanResult.className="scan-result "+(ok?"ok":"no");
     $("#scanResTitle").textContent=titulo; $("#scanResMsg").textContent=detalle;
   }
-  $("#scanRetry").addEventListener("click", function(){ scanResult.style.display="none"; startScanner(); });
+  $("#scanRetry").addEventListener("click", function(){ scanResult.style.display="none"; prepararEscaner(); });
+  $("#camStartBtn").addEventListener("click", startScanner);
   $("#scanManualGo").addEventListener("click", function(){ var v=$("#scanManualInput").value.trim(); if(v) procesarQR(v); });
   $("#scanEdit").addEventListener("click", function(){ stopScanner(); show("screenReg"); setDots(0,0); });
   $("#scanBack").addEventListener("click", function(){ goHome(); });
@@ -13504,24 +13552,64 @@ var qrcode = function() {
 
   var genFecha=$("#genFecha");
   function irAdmin(){ body.setAttribute("data-mode","asist"); show("screenAdmin"); setDots(0,0); genFecha.value=hoyStr(); generarDia(); }
-  function svgQR(f){ var qr=qrcode(0,"M"); qr.addData(QR_PREFIX+f); qr.make(); return qr.createSvgTag(6,4); }
-  function tarjetaQR(f,label){ return '<div class="qr-card"><div class="qr-svg">'+svgQR(f)+'</div><div class="qr-label">'+label+'</div></div>'; }
-  function generarDia(){ var f=genFecha.value||hoyStr(); $("#genUnico").innerHTML=tarjetaQR(f,f); $("#genSemana").innerHTML=""; }
+  function baseURL(){ return location.origin + location.pathname.replace(/index\.html$/,""); }
+  function qrTexto(f){ return baseURL()+"?a="+f; }
+  function svgQR(f){ var qr=qrcode(0,"M"); qr.addData(qrTexto(f)); qr.make(); return qr.createSvgTag(5,4); }
+  function tarjetaQR(f,label){ return '<div class="qr-card"><div class="qr-svg">'+svgQR(f)+'</div><div class="qr-label">'+label+'</div><div class="qr-code">'+f+'</div></div>'; }
+  function generarDia(){ var f=genFecha.value||hoyStr(); $("#genUnico").innerHTML=tarjetaQR(f,(f===hoyStr()?"Hoy":"Día")); $("#genSemana").innerHTML=""; $("#leerResult").textContent=""; }
   function generarSemana(){
     var base=genFecha.value||hoyStr();
     var d=new Date(base+"T12:00:00");
     var off=(d.getDay()+6)%7; var lunes=new Date(d); lunes.setDate(d.getDate()-off);
     var dias=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"], h="";
-    for(var i=0;i<7;i++){ var x=new Date(lunes); x.setDate(lunes.getDate()+i); var fs=fechaStrDe(x); h+=tarjetaQR(fs,dias[i]+' · '+fs); }
+    for(var i=0;i<7;i++){ var x=new Date(lunes); x.setDate(lunes.getDate()+i); var fs=fechaStrDe(x); h+=tarjetaQR(fs,dias[i]); }
     $("#genSemana").innerHTML=h; $("#genUnico").innerHTML="";
   }
   genFecha.addEventListener("change", generarDia);
   $("#genDiaBtn").addEventListener("click", generarDia);
   $("#genSemanaBtn").addEventListener("click", generarSemana);
+  function qrCanvas(f, cell, margin){
+    var qr=qrcode(0,"M"); qr.addData(qrTexto(f)); qr.make();
+    var n=qr.getModuleCount(); cell=cell||10; margin=margin||4;
+    var size=(n+margin*2)*cell;
+    var c=document.createElement("canvas"); c.width=size; c.height=size+56;
+    var ctx=c.getContext("2d");
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle="#000";
+    for(var r=0;r<n;r++){ for(var col=0;col<n;col++){ if(qr.isDark(r,col)){ ctx.fillRect((col+margin)*cell,(r+margin)*cell,cell,cell); } } }
+    ctx.fillStyle="#0c1322"; ctx.font="bold 26px Arial,sans-serif"; ctx.textAlign="center"; ctx.fillText("Asistencia "+f, c.width/2, size+34);
+    return c;
+  }
+  $("#descargarQR").addEventListener("click", function(){
+    var f=genFecha.value||hoyStr();
+    var c=qrCanvas(f,10,4);
+    var a=document.createElement("a"); a.download="QR-asistencia-"+f+".png"; a.href=c.toDataURL("image/png");
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+  $("#leerImg").addEventListener("change", function(ev){
+    var file=ev.target.files && ev.target.files[0]; if(!file) return;
+    $("#leerResult").textContent="Leyendo imagen…";
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement("canvas"); c.width=img.naturalWidth||img.width; c.height=img.naturalHeight||img.height;
+      var ctx=c.getContext("2d"); ctx.drawImage(img,0,0);
+      var data; try{ data=ctx.getImageData(0,0,c.width,c.height); }catch(e){ $("#leerResult").textContent="No se pudo leer la imagen."; try{URL.revokeObjectURL(img.src);}catch(x){} return; }
+      var code=window.jsQR? window.jsQR(data.data,c.width,c.height):null;
+      if(code&&code.data){ var fx=extraerFecha(code.data); $("#leerResult").innerHTML = fx ? ("Código leído: <b>"+fx+"</b> "+(fx===hoyStr()?"· es hoy":"· no es hoy")) : ("Contenido: "+code.data); }
+      else { $("#leerResult").textContent="No se encontró un QR en la imagen."; }
+      try{URL.revokeObjectURL(img.src);}catch(x){} ev.target.value="";
+    };
+    img.onerror=function(){ $("#leerResult").textContent="No se pudo abrir la imagen."; };
+    img.src=URL.createObjectURL(file);
+  });
   $("#adminBack").addEventListener("click", function(){ goHome(); });
 
   /* ---------- init ---------- */
   setDots(0,0);
+  (function(){
+    var m=(location.search||"").match(/[?&]a=(\d{4}-\d{2}-\d{2})/);
+    if(m){ var fecha=m[1]; try{ history.replaceState({}, "", baseURL()); }catch(e){} procesarFecha(fecha); }
+  })();
 })();
 </script>
 </body>
