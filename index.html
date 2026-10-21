@@ -13416,7 +13416,7 @@ var qrcode = function() {
     body.classList.remove("cover");
     body.setAttribute("data-mode","asist");
     var p=getPerfil();
-    if(p && p.correo){ mostrarInfoMarcar(); } else { show("screenReg"); setDots(0,0); }
+    if(p && p.identificacion){ mostrarInfoMarcar(); } else { show("screenReg"); setDots(0,0); }
   }
 
   /* ---- registro ---- */
@@ -13459,7 +13459,7 @@ var qrcode = function() {
   }
   function procesarFecha(fecha){
     var p=getPerfil();
-    if(!p||!p.correo){ pendiente=fecha; body.classList.remove("cover"); body.setAttribute("data-mode","asist"); show("screenReg"); setDots(0,0); return; }
+    if(!p||!p.identificacion){ pendiente=fecha; body.classList.remove("cover"); body.setAttribute("data-mode","asist"); show("screenReg"); setDots(0,0); return; }
     scanName.textContent=p.nombres+" "+p.apellidos;
     var min=minutosAhora(), ok=false, estado, detalle;
     if(fecha!==hoyStr()){ estado="QR de otro día"; detalle="Este QR es del "+fecha+", no de hoy."; }
