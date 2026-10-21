@@ -448,7 +448,7 @@
     <div class="form">
       <div class="field full"><label for="regNombres">Nombres</label><input type="text" id="regNombres" placeholder="" autocomplete="given-name"></div>
       <div class="field full"><label for="regApellidos">Apellidos</label><input type="text" id="regApellidos" placeholder="" autocomplete="family-name"></div>
-      <div class="field full"><label for="regCorreo">Correo</label><input type="email" id="regCorreo" placeholder="correo@ejemplo.com" autocomplete="email" inputmode="email"><div class="hint" id="regHint"></div></div>
+      <div class="field full"><label for="regId">Número de identificación</label><input type="text" id="regId" inputmode="numeric" autocomplete="off"><div class="hint" id="regHint"></div></div>
       <div class="actions">
         <button class="btn btn-ghost" id="regBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Inicio</button>
         <button class="btn btn-primary" id="regGuardar" disabled>Guardar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
@@ -500,7 +500,7 @@
       <div class="form">
         <div class="field full"><label for="mNombres">Nombres</label><input type="text" id="mNombres" autocomplete="off"></div>
         <div class="field full"><label for="mApellidos">Apellidos</label><input type="text" id="mApellidos" autocomplete="off"></div>
-        <div class="field full"><label for="mCorreo">Correo</label><input type="email" id="mCorreo" inputmode="email" autocomplete="off"></div>
+        <div class="field full"><label for="mId">Número de identificación</label><input type="text" id="mId" inputmode="numeric" autocomplete="off"></div>
         <div class="actions"><button class="btn btn-primary" id="mMarcar">Marcar presente</button></div>
         <div class="leer-result" id="mResult"></div>
       </div>
@@ -13420,20 +13420,20 @@ var qrcode = function() {
   }
 
   /* ---- registro ---- */
-  var regN=$("#regNombres"), regA=$("#regApellidos"), regC=$("#regCorreo"), regBtn=$("#regGuardar"), regHint=$("#regHint");
-  (function(){ var p=getPerfil(); if(p){ regN.value=p.nombres||""; regA.value=p.apellidos||""; regC.value=p.correo||""; } })();
+  var regN=$("#regNombres"), regA=$("#regApellidos"), regId=$("#regId"), regBtn=$("#regGuardar"), regHint=$("#regHint");
+  (function(){ var p=getPerfil(); if(p){ regN.value=p.nombres||""; regA.value=p.apellidos||""; regId.value=p.identificacion||""; } })();
   function validarReg(){
-    var n=regN.value.trim(), a=regA.value.trim(), c=regC.value.trim();
-    var okCorreo=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c);
-    var ok = n.length>1 && a.length>1 && okCorreo;
-    regHint.textContent = (c && !okCorreo) ? "Correo no válido." : "";
-    regHint.className = "hint"+((c&&!okCorreo)?" err":"");
+    var n=regN.value.trim(), a=regA.value.trim(), id=regId.value.trim();
+    var okId=id.length>=4;
+    var ok = n.length>1 && a.length>1 && okId;
+    regHint.textContent = (id && !okId) ? "La identificación es demasiado corta." : "";
+    regHint.className = "hint"+((id && !okId)?" err":"");
     regBtn.disabled=!ok; return ok;
   }
-  [regN,regA,regC].forEach(function(el){ el.addEventListener("input",validarReg); });
+  [regN,regA,regId].forEach(function(el){ el.addEventListener("input",validarReg); });
   regBtn.addEventListener("click", function(){
     if(!validarReg()) return;
-    setPerfil({nombres:regN.value.trim(), apellidos:regA.value.trim(), correo:regC.value.trim().toLowerCase()});
+    setPerfil({identificacion:regId.value.trim(), nombres:regN.value.trim(), apellidos:regA.value.trim()});
     if(pendiente){ var f=pendiente; pendiente=null; procesarFecha(f); } else { mostrarInfoMarcar(); }
   });
   $("#regBack").addEventListener("click", function(){ goHome(); });
@@ -13465,7 +13465,7 @@ var qrcode = function() {
     if(fecha!==hoyStr()){ estado="QR de otro día"; detalle="Este QR es del "+fecha+", no de hoy."; }
     else if(min<WIN_INI || min>WIN_FIN){ estado="Fuera de horario"; detalle="La asistencia se registra entre 6:15 y 7:45 p.m."; }
     else { estado="¡Asistencia registrada!"; detalle=p.nombres+", quedaste marcado(a) como presente hoy."; ok=true; }
-    enviarAsistencia({nombres:p.nombres, apellidos:p.apellidos, correo:p.correo, fechaQR:fecha});
+    enviarAsistencia({identificacion:p.identificacion||"", nombres:p.nombres, apellidos:p.apellidos, fechaQR:fecha});
     mostrarResultado(ok, estado, detalle);
   }
   function enviarAsistencia(payload){
@@ -13544,11 +13544,11 @@ var qrcode = function() {
   });
   function emailOk_(c){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c); }
   $("#mMarcar").addEventListener("click", function(){
-    var n=$("#mNombres").value.trim(), a=$("#mApellidos").value.trim(), c=$("#mCorreo").value.trim().toLowerCase();
-    if(n.length<2||a.length<2||!emailOk_(c)){ $("#mResult").innerHTML="<span style=\'color:#ff8a8a\'>Completa nombres, apellidos y un correo válido.</span>"; return; }
-    enviarAsistencia({manual:true, clave:ADMIN_PASS, nombres:n, apellidos:a, correo:c, fechaQR:hoyStr()});
+    var n=$("#mNombres").value.trim(), a=$("#mApellidos").value.trim(), id=$("#mId").value.trim();
+    if(n.length<2||a.length<2||id.length<4){ $("#mResult").innerHTML="<span style=\'color:#ff8a8a\'>Completa nombres, apellidos e identificación.</span>"; return; }
+    enviarAsistencia({manual:true, clave:ADMIN_PASS, identificacion:id, nombres:n, apellidos:a, fechaQR:hoyStr()});
     $("#mResult").innerHTML="Marcado(a) <b>"+n+" "+a+"</b> como presente. Verifica en tu hoja de cálculo.";
-    $("#mNombres").value=""; $("#mApellidos").value=""; $("#mCorreo").value="";
+    $("#mNombres").value=""; $("#mApellidos").value=""; $("#mId").value="";
   });
   $("#adminBack").addEventListener("click", function(){ goHome(); });
 
