@@ -290,6 +290,13 @@
   .gen-tools{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px}
   .gen-tools .btn,.gen-tools label.btn{cursor:pointer}
   .leer-result{text-align:center;margin-top:12px;font-size:14px;color:var(--tx-mut);min-height:18px}
+  .marcar-info{max-width:440px;margin:0 auto;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 24px}
+  .marcar-ico{width:62px;height:62px;border-radius:16px;margin:0 auto 16px;display:grid;place-items:center;background:rgba(23,160,106,.14);color:#49d89a;border:1px solid rgba(23,160,106,.3)}
+  .marcar-info h3{font-family:'Space Grotesk',sans-serif;font-size:18px;margin-bottom:8px}
+  .marcar-info p{color:var(--tx-mut);font-size:14px}
+  .admin-manual{max-width:520px;margin:30px auto 0;border-top:1px solid var(--line);padding-top:22px}
+  .admin-sub{font-family:'Space Grotesk',sans-serif;font-size:17px;margin-bottom:4px;text-align:center}
+  .admin-note{color:var(--tx-mut);font-size:13px;margin-bottom:16px;text-align:center}
 
 
   /* ---------- method cards (heart-rate / pace) ---------- */
@@ -449,32 +456,20 @@
     </div>
   </section>
 
-  <!-- SCREEN: ESCANER -->
+  <!-- SCREEN: MARCAR ASISTENCIA (info + resultado) -->
   <section class="screen" id="screenScan" aria-labelledby="scanT">
-    <div class="eyebrow">Asistencia &middot; Escanear</div>
-    <h2 class="title" id="scanT">Escanea el código</h2>
-    <p class="lead">Marcando como: <b id="scanName"></b> &middot; <span class="linklike" id="scanEdit">editar mis datos</span></p>
-    <div class="scanner">
-      <video id="scanVideo" playsinline muted></video>
-      <div class="scan-frame"></div>
-      <div class="cam-start" id="camStart">
-        <button class="btn btn-primary" id="camStartBtn">Encender cámara</button>
-        <p>Cuando el navegador lo pida, toca <b>Permitir</b> para acceder a la cámara.</p>
-      </div>
-    </div>
-    <div class="scan-status" id="scanStatus">Toca «Encender cámara» para escanear.</div>
-    <div class="scan-manual" id="scanManualWrap" style="display:none">
-      <label for="scanManualInput">¿La cámara no funciona? Escribe la fecha que aparece bajo el QR:</label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="scanManualInput" placeholder="2026-10-21" inputmode="numeric">
-        <button class="btn btn-primary" id="scanManualGo">Enviar</button>
-      </div>
+    <div class="eyebrow">Asistencia</div>
+    <h2 class="title" id="scanT">Marca tu asistencia</h2>
+    <p class="lead">Registrado como: <b id="scanName"></b> &middot; <span class="linklike" id="scanEdit">editar mis datos</span></p>
+    <div class="marcar-info" id="marcarInfo">
+      <div class="marcar-ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 012-2h2M17 5h2a2 2 0 012 2v2M21 15v2a2 2 0 01-2 2h-2M7 19H5a2 2 0 01-2-2v-2"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/></svg></div>
+      <h3>Escanea el QR del día</h3>
+      <p>Abre la <b>cámara normal</b> de tu celular (o cualquier app de QR) y apunta al código que muestra el organizador. Toca el enlace que aparece y tu asistencia quedará marcada.</p>
     </div>
     <div class="scan-result" id="scanResult" style="display:none">
       <div class="scan-res-icon"></div>
       <h3 id="scanResTitle"></h3>
       <p id="scanResMsg"></p>
-      <button class="btn btn-primary" id="scanRetry">Escanear de nuevo</button>
     </div>
     <div class="actions" style="margin-top:18px">
       <button class="btn btn-ghost" id="scanBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Inicio</button>
@@ -499,6 +494,17 @@
       <input type="file" id="leerImg" accept="image/*" style="display:none">
     </div>
     <div class="leer-result" id="leerResult"></div>
+    <div class="admin-manual">
+      <h3 class="admin-sub">Marcado manual</h3>
+      <p class="admin-note">Para marcar a alguien que no pudo escanear. Queda como presente del día.</p>
+      <div class="form">
+        <div class="field full"><label for="mNombres">Nombres</label><input type="text" id="mNombres" autocomplete="off"></div>
+        <div class="field full"><label for="mApellidos">Apellidos</label><input type="text" id="mApellidos" autocomplete="off"></div>
+        <div class="field full"><label for="mCorreo">Correo</label><input type="email" id="mCorreo" inputmode="email" autocomplete="off"></div>
+        <div class="actions"><button class="btn btn-primary" id="mMarcar">Marcar presente</button></div>
+        <div class="leer-result" id="mResult"></div>
+      </div>
+    </div>
     <div class="actions" style="margin-top:20px">
       <button class="btn btn-ghost" id="adminBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Inicio</button>
     </div>
@@ -13383,7 +13389,6 @@ var qrcode = function() {
     $("#avgChip").innerHTML=""; calcBtn.disabled=true;
     pmin.value=""; psec.value=""; calcPaceBtn.disabled=true;
     $("#hPace").textContent=""; $("#hPace").className="hint";
-    if(typeof stopScanner==="function"){ stopScanner(); }
     body.classList.add("cover");
     show("screenCover"); setDots(0,0);
   }
@@ -13411,7 +13416,7 @@ var qrcode = function() {
     body.classList.remove("cover");
     body.setAttribute("data-mode","asist");
     var p=getPerfil();
-    if(p && p.correo){ irEscaner(); } else { show("screenReg"); setDots(0,0); }
+    if(p && p.correo){ mostrarInfoMarcar(); } else { show("screenReg"); setDots(0,0); }
   }
 
   /* ---- registro ---- */
@@ -13429,75 +13434,20 @@ var qrcode = function() {
   regBtn.addEventListener("click", function(){
     if(!validarReg()) return;
     setPerfil({nombres:regN.value.trim(), apellidos:regA.value.trim(), correo:regC.value.trim().toLowerCase()});
-    if(pendiente){ var f=pendiente; pendiente=null; procesarFecha(f); } else { irEscaner(); }
+    if(pendiente){ var f=pendiente; pendiente=null; procesarFecha(f); } else { mostrarInfoMarcar(); }
   });
   $("#regBack").addEventListener("click", function(){ goHome(); });
 
-  /* ---- escáner ---- */
-  var scanVideo=$("#scanVideo");
-  var scanCanvas=document.createElement("canvas");
-  var scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true});
-  var scanStream=null, scanRAF=null, scanActivo=false;
-  var scanStatus=$("#scanStatus"), scanResult=$("#scanResult"), scanName=$("#scanName");
+  /* ---- marcar asistencia (solo cámara normal / enlace) ---- */
+  var scanResult=$("#scanResult"), scanName=$("#scanName");
 
-  function irEscaner(){
+  function mostrarInfoMarcar(){
     var p=getPerfil();
     scanName.textContent = p ? (p.nombres+" "+p.apellidos) : "";
+    document.getElementById("marcarInfo").style.display="block";
+    scanResult.style.display="none";
+    body.classList.remove("cover"); body.setAttribute("data-mode","asist");
     show("screenScan"); setDots(0,0);
-    prepararEscaner();
-  }
-  function prepararEscaner(){
-    scanResult.style.display="none";
-    $("#scanManualWrap").style.display="none";
-    var cs=document.getElementById("camStart"); if(cs) cs.classList.remove("hide");
-    scanStatus.style.display="block";
-    scanStatus.className="scan-status";
-    scanStatus.textContent="Toca «Encender cámara» para escanear.";
-  }
-  function startScanner(){
-    var cs=document.getElementById("camStart"); if(cs) cs.classList.add("hide");
-    scanResult.style.display="none";
-    $("#scanManualWrap").style.display="none";
-    scanStatus.style.display="block";
-    scanStatus.textContent="Apunta la cámara al código QR…";
-    scanStatus.className="scan-status";
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camError("no disponible"); return; }
-    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}, audio:false})
-      .then(function(stream){
-        scanStream=stream; scanVideo.srcObject=stream;
-        scanVideo.setAttribute("playsinline","true");
-        var pr=scanVideo.play(); if(pr&&pr.catch){ pr.catch(function(){}); }
-        scanActivo=true; scanRAF=requestAnimationFrame(tick);
-      })
-      .catch(function(err){ camError((err&&err.name)||""); });
-  }
-  function camError(detalle){
-    var cs=document.getElementById("camStart"); if(cs) cs.classList.remove("hide");
-    scanStatus.style.display="block"; scanStatus.className="scan-status err";
-    scanStatus.innerHTML="No se pudo abrir la cámara"+(detalle?(" ("+detalle+")"):"")+". Toca <b>Permitir</b> cuando el navegador lo pida, o escanea el QR con la <b>cámara normal</b> de tu celular. Si abriste el enlace dentro de WhatsApp/Instagram, ábrelo en Chrome o Safari.";
-    $("#scanManualWrap").style.display="block";
-  }
-  function tick(){
-    if(!scanActivo) return;
-    if(scanVideo.readyState===scanVideo.HAVE_ENOUGH_DATA){
-      var w=scanVideo.videoWidth, h=scanVideo.videoHeight;
-      if(w && h){
-        scanCanvas.width=w; scanCanvas.height=h;
-        scanCtx.drawImage(scanVideo,0,0,w,h);
-        try{
-          var img=scanCtx.getImageData(0,0,w,h);
-          var code = window.jsQR ? window.jsQR(img.data,w,h,{inversionAttempts:"dontInvert"}) : null;
-          if(code && code.data){ procesarQR(code.data); return; }
-        }catch(e){}
-      }
-    }
-    scanRAF=requestAnimationFrame(tick);
-  }
-  function stopScanner(){
-    scanActivo=false;
-    if(scanRAF){ cancelAnimationFrame(scanRAF); scanRAF=null; }
-    if(scanStream){ scanStream.getTracks().forEach(function(t){ t.stop(); }); scanStream=null; }
-    if(scanVideo) scanVideo.srcObject=null;
   }
   function extraerFecha(texto){
     texto=(texto||"").trim();
@@ -13518,12 +13468,6 @@ var qrcode = function() {
     enviarAsistencia({nombres:p.nombres, apellidos:p.apellidos, correo:p.correo, fechaQR:fecha});
     mostrarResultado(ok, estado, detalle);
   }
-  function procesarQR(texto){
-    stopScanner();
-    var fecha=extraerFecha(texto);
-    if(!fecha){ mostrarResultado(false,"QR no válido","Este código no corresponde a la asistencia del grupo."); return; }
-    procesarFecha(fecha);
-  }
   function enviarAsistencia(payload){
     try{ fetch(ASIST_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}); }catch(e){}
   }
@@ -13531,15 +13475,11 @@ var qrcode = function() {
     body.classList.remove("cover"); body.setAttribute("data-mode","asist");
     var sc=document.getElementById("screenScan");
     if(sc && sc.className.indexOf("active")<0){ show("screenScan"); setDots(0,0); }
-    var cs=document.getElementById("camStart"); if(cs) cs.classList.add("hide");
-    scanStatus.style.display="none"; $("#scanManualWrap").style.display="none";
+    document.getElementById("marcarInfo").style.display="none";
     scanResult.style.display="block"; scanResult.className="scan-result "+(ok?"ok":"no");
     $("#scanResTitle").textContent=titulo; $("#scanResMsg").textContent=detalle;
   }
-  $("#scanRetry").addEventListener("click", function(){ scanResult.style.display="none"; prepararEscaner(); });
-  $("#camStartBtn").addEventListener("click", startScanner);
-  $("#scanManualGo").addEventListener("click", function(){ var v=$("#scanManualInput").value.trim(); if(v) procesarQR(v); });
-  $("#scanEdit").addEventListener("click", function(){ stopScanner(); show("screenReg"); setDots(0,0); });
+  $("#scanEdit").addEventListener("click", function(){ show("screenReg"); setDots(0,0); });
   $("#scanBack").addEventListener("click", function(){ goHome(); });
   $("#asistBtn").addEventListener("click", irAsistencia);
 
@@ -13601,6 +13541,14 @@ var qrcode = function() {
     };
     img.onerror=function(){ $("#leerResult").textContent="No se pudo abrir la imagen."; };
     img.src=URL.createObjectURL(file);
+  });
+  function emailOk_(c){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c); }
+  $("#mMarcar").addEventListener("click", function(){
+    var n=$("#mNombres").value.trim(), a=$("#mApellidos").value.trim(), c=$("#mCorreo").value.trim().toLowerCase();
+    if(n.length<2||a.length<2||!emailOk_(c)){ $("#mResult").innerHTML="<span style=\'color:#ff8a8a\'>Completa nombres, apellidos y un correo válido.</span>"; return; }
+    enviarAsistencia({manual:true, clave:ADMIN_PASS, nombres:n, apellidos:a, correo:c, fechaQR:hoyStr()});
+    $("#mResult").innerHTML="Marcado(a) <b>"+n+" "+a+"</b> como presente. Verifica en tu hoja de cálculo.";
+    $("#mNombres").value=""; $("#mApellidos").value=""; $("#mCorreo").value="";
   });
   $("#adminBack").addEventListener("click", function(){ goHome(); });
 
